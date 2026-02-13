@@ -1,191 +1,170 @@
-/* Storage Keys */
-const KEYS = {
-    INCOME: 'calmFinance_incomes',
-    EXPENSE: 'calmFinance_expenses',
-    SUBS: 'calmFinance_subscriptions',
-    DEBT: 'calmFinance_debt',
-    SETTINGS: 'calmFinance_settings'
-};
-
-/* State Management */
-const state = {
-    incomes: JSON.parse(localStorage.getItem(KEYS.INCOME)) || [],
-    expenses: JSON.parse(localStorage.getItem(KEYS.EXPENSE)) || [],
-    subs: JSON.parse(localStorage.getItem(KEYS.SUBS)) || [],
-    debt: JSON.parse(localStorage.getItem(KEYS.DEBT)) || [],
-    settings: JSON.parse(localStorage.getItem(KEYS.SETTINGS)) || { currency: '$' }
-};
-
-/* --- 1. Navigation & Routing --- */
-function router() {
-    // Default to #dashboard if empty
-    const hash = window.location.hash || '#dashboard';
-    
-    // Hide all sections
-    document.querySelectorAll('.view').forEach(el => el.classList.add('hidden'));
-    document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
-
-    // Show target section
-    const target = document.querySelector(hash);
-    if (target) {
-        target.classList.remove('hidden');
-    }
-    
-    // Highlight nav link
-    const navLink = document.querySelector(`nav a[href="${hash}"]`);
-    if (navLink) navLink.classList.add('active');
-
-    // Trigger specific view renders
-    if (hash === '#dashboard') renderDashboard();
-    if (hash === '#income') renderList(state.incomes, 'incomeList');
-    if (hash === '#expenses') renderList(state.expenses, 'expenseList');
-    if (hash === '#subs') renderList(state.subs, 'subsList');
-    if (hash === '#debt') renderList(state.debt, 'debtList');
-    if (hash === '#reports') renderReports();
+:root {
+    --bg-color: #f4f6f8;
+    --card-bg: #ffffff;
+    --primary: #4a90e2;
+    --accent: #50e3c2;
+    --warn: #e25c5c;
+    --text: #333333;
+    --text-light: #777777;
+    --border-radius: 8px;
+    --shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
-window.addEventListener('hashchange', router);
-window.addEventListener('DOMContentLoaded', () => {
-    // Set default month input to current month (YYYY-MM)
-    const today = new Date().toISOString().slice(0, 7);
-    const monthInput = document.getElementById('dashboardMonth');
-    if(monthInput) {
-        monthInput.value = today;
-        monthInput.addEventListener('change', renderDashboard);
-    }
-    
-    // Init settings
-    const currInput = document.getElementById('currencyInput');
-    if(currInput) currInput.value = state.settings.currency;
-
-    router();
-});
-
-/* --- 2. Data Persistence Helper --- */
-function save(key, data) {
-    localStorage.setItem(key, JSON.stringify(data));
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-function formatMoney(amount) {
-    return `${state.settings.currency}${parseFloat(amount).toFixed(2)}`;
+body {
+    background-color: var(--bg-color);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
 }
 
-/* --- 3. Form Handling --- */
-function handleForm(formId, dataKey, storageKey, processFn) {
-    const form = document.getElementById(formId);
-    if (!form) return;
-
-    form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const formData = new FormData(form);
-        const entry = Object.fromEntries(formData.entries());
-        
-        // Add ID and Timestamp
-        entry.id = Date.now();
-        entry.created_at = new Date().toISOString();
-
-        // Push to state
-        state[dataKey].push(entry);
-        
-        // Save to Storage
-        save(storageKey, state[dataKey]);
-        
-        // UI Feedback
-        form.reset();
-        alert('Saved successfully!');
-        
-        // Refresh Current View
-        router(); 
-    });
+/* Header & Nav */
+header {
+    background-color: var(--card-bg);
+    padding: 1rem 2rem;
+    box-shadow: var(--shadow);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
 
-// Initialize Forms
-handleForm('incomeForm', 'incomes', KEYS.INCOME);
-handleForm('expenseForm', 'expenses', KEYS.EXPENSE);
-handleForm('subsForm', 'subs', KEYS.SUBS);
-handleForm('debtForm', 'debt', KEYS.DEBT);
-
-/* Settings Form */
-document.getElementById('settingsForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    state.settings.currency = document.getElementById('currencyInput').value || '$';
-    save(KEYS.SETTINGS, state.settings);
-    alert('Settings Saved');
-    router(); // refresh to show new currency
-});
-
-document.getElementById('clearDataBtn').addEventListener('click', () => {
-    if(confirm('Are you sure? This will wipe all data.')) {
-        localStorage.clear();
-        location.reload();
-    }
-});
-
-/* --- 4. Render Logic --- */
-
-function renderDashboard() {
-    const monthInput = document.getElementById('dashboardMonth');
-    const selectedMonth = monthInput.value; // YYYY-MM
-
-    // Filter by selected month
-    const currentIncomes = state.incomes.filter(i => i.date.startsWith(selectedMonth));
-    const currentExpenses = state.expenses.filter(e => e.date.startsWith(selectedMonth));
-
-    // Calculate Totals
-    const totalInc = currentIncomes.reduce((sum, item) => sum + parseFloat(item.amount), 0);
-    const totalExp = currentExpenses.reduce((sum, item) => sum + parseFloat(item.amount), 0);
-    
-    // Subs are assumed monthly recurring
-    const totalSubs = state.subs.reduce((sum, item) => sum + parseFloat(item.cost), 0);
-
-    const net = totalInc - (totalExp + totalSubs);
-
-    // Update UI
-    document.getElementById('totalIncome').textContent = formatMoney(totalInc);
-    document.getElementById('totalExpenses').textContent = formatMoney(totalExp);
-    document.getElementById('totalSubs').textContent = formatMoney(totalSubs);
-    document.getElementById('netBalance').textContent = formatMoney(net);
-    
-    // Simple color coding
-    const netEl = document.getElementById('netBalance');
-    netEl.style.color = net >= 0 ? 'var(--primary)' : 'var(--warn)';
+.logo {
+    font-weight: bold;
+    font-size: 1.2rem;
+    color: var(--primary);
 }
 
-function renderList(dataArray, listId) {
-    const list = document.getElementById(listId);
-    if (!list) return;
-    list.innerHTML = '';
-
-    // Sort by date desc (if date exists) or id
-    const sorted = [...dataArray].sort((a,b) => (b.date || b.id) > (a.date || a.id) ? 1 : -1);
-
-    sorted.forEach(item => {
-        const li = document.createElement('li');
-        // Determine label based on type
-        const mainText = item.source || item.category || item.name || 'Entry';
-        const amt = item.amount || item.cost || item.total;
-        const date = item.date ? `<small>${item.date}</small>` : '';
-        
-        li.innerHTML = `
-            <div><strong>${mainText}</strong> <br> ${date}</div>
-            <div>${formatMoney(amt)}</div>
-        `;
-        list.appendChild(li);
-    });
+nav a {
+    text-decoration: none;
+    color: var(--text-light);
+    margin-left: 1.5rem;
+    font-size: 0.9rem;
+    transition: color 0.2s;
 }
 
-function renderReports() {
-    const output = document.getElementById('reportOutput');
-    const countI = state.incomes.length;
-    const countE = state.expenses.length;
-    const countD = state.debt.length;
-    
-    output.innerHTML = `
-        <div class="card">
-            <h3>Database Statistics</h3>
-            <p>Income Entries: ${countI}</p>
-            <p>Expense Entries: ${countE}</p>
-            <p>Active Debts: ${countD}</p>
-        </div>
-    `;
+nav a:hover, nav a.active {
+    color: var(--primary);
+    font-weight: 500;
+}
+
+/* Main Layout */
+main {
+    max-width: 800px;
+    margin: 2rem auto;
+    width: 90%;
+    flex: 1;
+}
+
+/* View Toggling - Vital for SPA */
+.view {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.hidden {
+    display: none;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Forms */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-light);
+}
+
+input {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px solid #ddd;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+}
+
+button {
+    padding: 0.8rem 1.5rem;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 1rem;
+    color: white;
+    transition: opacity 0.2s;
+}
+
+button:hover { opacity: 0.9; }
+
+.btn-primary { background-color: var(--primary); }
+.btn-warn { background-color: var(--warn); }
+
+/* Dashboard Cards */
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.card {
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    text-align: center;
+}
+
+.card h3 {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    margin-bottom: 0.5rem;
+}
+
+.card p {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--text);
+}
+
+.controls {
+    margin-bottom: 1rem;
+    text-align: right;
+}
+
+/* Lists */
+.data-list {
+    list-style: none;
+    margin-top: 1rem;
+}
+
+.data-list li {
+    background: var(--card-bg);
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: var(--border-radius);
+    display: flex;
+    justify-content: space-between;
+    box-shadow: var(--shadow);
+}
+
+.hint {
+    color: var(--text-light);
+    font-size: 0.8rem;
+    margin-bottom: 1rem;
 }
