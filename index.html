@@ -3,118 +3,293 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calm Finance</title>
+    <title>CalmFinance CFO</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-    <nav class="navbar">
-        <div class="logo">Calm Finance</div>
+    <nav class="top-nav">
+        <div class="brand">
+            <span class="logo-icon">◈</span>
+            <h1>CalmFinance <span class="cfo-badge">CFO</span></h1>
+        </div>
         <ul class="nav-links">
-            <li><a href="#" onclick="showSection('dashboard')">Dashboard</a></li>
-            <li><a href="#" onclick="showSection('income')">Income</a></li>
-            <li><a href="#" onclick="showSection('expenses')">Expenses</a></li>
-            <li><a href="#" onclick="showSection('subscriptions')">Subs</a></li>
-            <li><a href="#" onclick="showSection('debt')">Debt</a></li>
+            <li><a href="#" class="active" data-section="dashboard">Dashboard</a></li>
+            <li><a href="#" data-section="income">Income</a></li>
+            <li><a href="#" data-section="expenses">Expenses</a></li>
+            <li><a href="#" data-section="subs">Subscriptions</a></li>
+            <li><a href="#" data-section="debt">Debt</a></li>
+            <li><a href="#" data-section="reports">Reports</a></li>
+            <li><a href="#" data-section="settings">Settings</a></li>
         </ul>
     </nav>
 
-    <main class="container">
-        <section id="dashboard" class="content-section">
-            <h1 class="section-title">Monthly Overview</h1>
-            <div class="stats-grid">
-                <div class="card">
-                    <h3>Income</h3>
-                    <p id="dash-income" class="amount">0 EGP</p>
+    <main id="app-container">
+        <section id="dashboard" class="view">
+            <header class="view-header">
+                <h2>Executive Summary</h2>
+                <div class="month-selector">
+                    <input type="month" id="dash-month-filter">
                 </div>
-                <div class="card">
-                    <h3>Expenses</h3>
-                    <p id="dash-expenses" class="amount">0 EGP</p>
+            </header>
+
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <label>Total Income</label>
+                    <div id="kpi-income" class="value">0 EGP</div>
                 </div>
-                <div class="card">
-                    <h3>Balance</h3>
-                    <p id="dash-balance" class="amount highlight">0 EGP</p>
+                <div class="kpi-card">
+                    <label>Total Expenses</label>
+                    <div id="kpi-expenses" class="value">0 EGP</div>
                 </div>
-                <div class="card">
-                    <h3>Credit Debt</h3>
-                    <p id="dash-debt" class="amount">0 EGP</p>
+                <div class="kpi-card">
+                    <label>Net Balance</label>
+                    <div id="kpi-balance" class="value">0 EGP</div>
+                </div>
+                <div class="kpi-card">
+                    <label>Savings Amount</label>
+                    <div id="kpi-savings" class="value highlight">0 EGP</div>
                 </div>
             </div>
-            
-            <div class="visual-indicator">
-                <label>Budget Usage</label>
-                <div class="progress-bar">
-                    <div id="budget-progress" class="progress-fill"></div>
+
+            <div class="analytics-row">
+                <div class="card chart-container">
+                    <h3>Category Breakdown (%)</h3>
+                    <div id="category-bar-chart" class="bar-chart-v"></div>
+                </div>
+                <div class="card ratio-container">
+                    <h3>Financial Ratios</h3>
+                    <div class="ratio-item">
+                        <span>Savings Rate</span>
+                        <div class="progress-bg"><div id="ratio-savings-bar" class="progress-fill"></div></div>
+                        <span id="ratio-savings-text">0%</span>
+                    </div>
+                    <div class="ratio-item">
+                        <span>Fixed Cost Ratio</span>
+                        <div class="progress-bg"><div id="ratio-fixed-bar" class="progress-fill"></div></div>
+                        <span id="ratio-fixed-text">0%</span>
+                    </div>
+                    <div class="ratio-item">
+                        <span>Debt-to-Income</span>
+                        <div class="progress-bg"><div id="ratio-debt-bar" class="progress-fill"></div></div>
+                        <span id="ratio-debt-text">0%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="analytics-row">
+                <div class="card">
+                    <h3>Budget vs Actual</h3>
+                    <div class="budget-usage">
+                        <div class="progress-bg large"><div id="budget-actual-fill" class="progress-fill"></div></div>
+                        <p id="budget-variance-label">0% of monthly budget used</p>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>High Pressure Days</h3>
+                    <ul id="high-pressure-list" class="mini-list"></ul>
                 </div>
             </div>
         </section>
 
-        <section id="income" class="content-section" style="display:none;">
-            <h1 class="section-title">Add Income</h1>
-            <form id="income-form" class="form-style">
-                <input type="date" id="inc-date" required>
-                <select id="inc-source">
-                    <option value="Salary">Salary</option>
-                    <option value="Design">Design</option>
-                    <option value="Other">Other</option>
-                </select>
-                <input type="number" id="inc-amount" placeholder="Amount (EGP)" required>
-                <input type="text" id="inc-notes" placeholder="Notes (Optional)">
-                <button type="submit">Record Income</button>
-            </form>
-            <ul id="income-list" class="data-list"></ul>
+        <section id="income" class="view" style="display:none">
+            <header class="view-header">
+                <h2>Income Streams</h2>
+                <div class="quick-actions">
+                    <button onclick="quickAddIncome('Salary', 35000, 23)">+ Salary (23rd)</button>
+                    <button onclick="quickAddIncome('Design', 8000, 5)">+ Design (5th)</button>
+                </div>
+            </header>
+            <div class="form-card">
+                <form id="income-form">
+                    <input type="date" id="inc-date" required>
+                    <select id="inc-source">
+                        <option value="Salary">Salary</option>
+                        <option value="Design">Design</option>
+                        <option value="Bonus">Bonus</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    <input type="number" id="inc-amount" placeholder="Amount EGP" required>
+                    <input type="text" id="inc-notes" placeholder="Notes (Optional)">
+                    <button type="submit" class="btn-primary">Add Entry</button>
+                </form>
+            </div>
+            <div class="card">
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Date</th><th>Source</th><th>Amount</th><th>Notes</th><th>Action</th></tr>
+                    </thead>
+                    <tbody id="income-table-body"></tbody>
+                </table>
+            </div>
         </section>
 
-        <section id="expenses" class="content-section" style="display:none;">
-            <h1 class="section-title">Add Expense</h1>
-            <form id="expense-form" class="form-style">
-                <input type="date" id="exp-date" required>
-                <select id="exp-category">
+        <section id="expenses" class="view" style="display:none">
+            <header class="view-header">
+                <h2>Expense Tracking</h2>
+                <button class="btn-outline" onclick="loadFixedPack()">Load Fixed Pack Template</button>
+            </header>
+            <div class="form-card">
+                <form id="expense-form">
+                    <input type="date" id="exp-date" required>
+                    <select id="exp-cat">
+                        <option value="Home">Home</option>
+                        <option value="Transport">Transport</option>
+                        <option value="Food">Food</option>
+                        <option value="Personal">Personal</option>
+                        <option value="Subscriptions">Subscriptions</option>
+                        <option value="Debt">Debt Payment</option>
+                        <option value="Health">Health</option>
+                        <option value="Giving">Giving</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    <input type="number" id="exp-amount" placeholder="Amount EGP" required>
+                    <input type="text" id="exp-notes" placeholder="Notes">
+                    <button type="submit" class="btn-primary">Add Expense</button>
+                </form>
+            </div>
+            <div class="filters">
+                <input type="month" id="exp-filter-month">
+                <select id="exp-filter-cat">
+                    <option value="All">All Categories</option>
                     <option value="Home">Home</option>
-                    <option value="Transportation">Transportation</option>
-                    <option value="Subscriptions">Subscriptions</option>
+                    <option value="Transport">Transport</option>
                     <option value="Food">Food</option>
-                    <option value="Personal">Personal</option>
-                    <option value="Debt">Debt Payment</option>
                 </select>
-                <input type="number" id="exp-amount" placeholder="Amount (EGP)" required>
-                <input type="text" id="exp-notes" placeholder="Notes">
-                <button type="submit">Record Expense</button>
-            </form>
-            <ul id="expense-list" class="data-list"></ul>
+            </div>
+            <div class="card">
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Date</th><th>Category</th><th>Amount</th><th>Notes</th><th>Action</th></tr>
+                    </thead>
+                    <tbody id="expense-table-body"></tbody>
+                </table>
+            </div>
         </section>
 
-        <section id="subscriptions" class="content-section" style="display:none;">
-            <h1 class="section-title">Subscriptions</h1>
-            <div class="card sub-total-card">
-                <h3>Total Monthly Cost: <span id="sub-total-val">0</span> EGP</h3>
+        <section id="subs" class="view" style="display:none">
+            <header class="view-header">
+                <h2>Digital Subscriptions</h2>
+                <button class="btn-outline" onclick="loadDefaultSubs()">Load Default CFO List</button>
+            </header>
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <label>Monthly Recurring</label>
+                    <div id="sub-monthly-total" class="value">0 EGP</div>
+                </div>
+                <div class="kpi-card">
+                    <label>Yearly Burden</label>
+                    <div id="sub-yearly-total" class="value">0 EGP</div>
+                </div>
             </div>
-            <form id="sub-form" class="form-style">
-                <input type="text" id="sub-name" placeholder="Name (e.g. Netflix)" required>
-                <select id="sub-cycle">
-                    <option value="monthly">Monthly</option>
-                    <option value="yearly">Yearly</option>
-                </select>
-                <input type="number" id="sub-amount" placeholder="Amount" required>
-                <input type="text" id="sub-month" placeholder="Renewal Month">
-                <button type="submit">Add Subscription</button>
-            </form>
-            <ul id="sub-list" class="data-list"></ul>
+            <div class="form-card">
+                <form id="sub-form">
+                    <input type="text" id="sub-name" placeholder="Service Name" required>
+                    <select id="sub-type">
+                        <option value="monthly">Monthly</option>
+                        <option value="yearly">Yearly</option>
+                    </select>
+                    <input type="number" id="sub-amount" placeholder="Amount" required>
+                    <select id="sub-renewal">
+                        <option value="1">Jan Renewal</option>
+                        <option value="2">Feb</option>
+                        <option value="3">Mar</option>
+                        <option value="4">Apr</option>
+                        <option value="5">May</option>
+                        <option value="6">Jun</option>
+                        <option value="7">Jul</option>
+                        <option value="8">Aug</option>
+                        <option value="9">Sep</option>
+                        <option value="10">Oct</option>
+                        <option value="11">Nov</option>
+                        <option value="12">Dec</option>
+                    </select>
+                    <button type="submit" class="btn-primary">Track Sub</button>
+                </form>
+            </div>
+            <div id="subs-grid" class="subs-container"></div>
         </section>
 
-        <section id="debt" class="content-section" style="display:none;">
-            <h1 class="section-title">Debt Tracker</h1>
-            <div class="debt-container">
+        <section id="debt" class="view" style="display:none">
+            <header class="view-header">
+                <h2>Debt Payoff Strategy</h2>
+            </header>
+            <div class="analytics-row">
                 <div class="card">
-                    <h3>Initial Debt</h3>
-                    <p>42,000 EGP</p>
+                    <h3>Liability Details</h3>
+                    <div class="input-group">
+                        <label>Starting Balance</label>
+                        <input type="number" id="debt-start-bal" value="42000">
+                    </div>
+                    <div class="input-group">
+                        <label>Current Monthly Payment</label>
+                        <input type="number" id="debt-monthly-pay" value="2000">
+                    </div>
+                    <div class="input-group">
+                        <label>APR % (Optional)</label>
+                        <input type="number" id="debt-apr" value="0">
+                    </div>
+                    <button onclick="updateDebtParams()" class="btn-primary" style="width:100%; margin-top:10px;">Update Plan</button>
                 </div>
                 <div class="card">
-                    <h3>Remaining Balance</h3>
-                    <p id="debt-remaining" class="amount highlight">42,000 EGP</p>
+                    <h3>Payoff Estimate</h3>
+                    <div id="debt-summary-box">
+                        <div class="value" id="debt-months-left">0 Months</div>
+                        <p>Until debt-free based on current category spending.</p>
+                    </div>
                 </div>
             </div>
-            <p class="hint-text">Note: Any expense categorized as "Debt Payment" will automatically reduce this balance.</p>
+            <div class="card">
+                <h3>Amortization Schedule</h3>
+                <table class="data-table">
+                    <thead><tr><th>Month</th><th>Payment</th><th>Interest</th><th>Principal</th><th>Balance</th></tr></thead>
+                    <tbody id="debt-table-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="reports" class="view" style="display:none">
+            <header class="view-header">
+                <h2>Analytics & Reporting</h2>
+                <button class="btn-outline" onclick="exportToCSV()">Export CSV</button>
+            </header>
+            <div class="card">
+                <h3>12-Month Performance</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Month</th><th>Income</th><th>Expense</th><th>Net</th><th>Savings %</th><th>Top Category</th></tr>
+                    </thead>
+                    <tbody id="reports-table-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="settings" class="view" style="display:none">
+            <header class="view-header">
+                <h2>System Settings</h2>
+            </header>
+            <div class="analytics-row">
+                <div class="card">
+                    <h3>Budgeting Targets</h3>
+                    <div class="input-group">
+                        <label>Global Monthly Budget (EGP)</label>
+                        <input type="number" id="set-budget" value="15000">
+                    </div>
+                    <div class="input-group">
+                        <label>Savings Target (%)</label>
+                        <input type="number" id="set-savings-target" value="20">
+                    </div>
+                    <button onclick="saveSettings()" class="btn-primary">Save Settings</button>
+                </div>
+                <div class="card">
+                    <h3>Backup & Portability</h3>
+                    <p>Download your data as a JSON file or restore from a previous backup.</p>
+                    <div class="btn-group">
+                        <button class="btn-outline" onclick="exportData()">Export JSON</button>
+                        <button class="btn-outline" onclick="document.getElementById('import-file').click()">Import JSON</button>
+                        <input type="file" id="import-file" style="display:none" onchange="importData(event)">
+                    </div>
+                </div>
+            </div>
         </section>
     </main>
 
