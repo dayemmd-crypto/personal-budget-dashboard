@@ -1,111 +1,392 @@
-:root {
-    --bg-color: #f4f7f6;
-    --card-bg: #ffffff;
-    --primary: #8fa18d; /* Sage Green */
-    --accent: #d1d9d0;
-    --text-main: #4a4a4a;
-    --text-light: #888;
-    --success: #a3b18a;
+/**
+ * CALM FINANCE CFO CORE ENGINE
+ * Handles: Analytics, Data Persistence, Debt Amortization, and SPA Routing.
+ */
+
+// --- INITIAL STATE ---
+let state = {
+    incomes: JSON.parse(localStorage.getItem('calmFinance_incomes')) || [],
+    expenses: JSON.parse(localStorage.getItem('calmFinance_expenses')) || [],
+    subs: JSON.parse(localStorage.getItem('calmFinance_subscriptions')) || [],
+    debt: JSON.parse(localStorage.getItem('calmFinance_debt')) || { startBal: 42000, monthlyPay: 2000, apr: 0 },
+    settings: JSON.parse(localStorage.getItem('calmFinance_settings')) || { budget: 15000, savingsTarget: 20 },
+    currentMonth: new Date().toISOString().slice(0, 7) // YYYY-MM
+};
+
+// --- INITIALIZATION ---
+document.addEventListener('DOMContentLoaded', () => {
+    initNavigation();
+    setupEventListeners();
+    document.getElementById('dash-month-filter').value = state.currentMonth;
+    document.getElementById('exp-filter-month').value = state.currentMonth;
+    refreshAllViews();
+});
+
+// --- ROUTING ---
+function initNavigation() {
+    document.querySelectorAll('.nav-links a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const section = e.target.getAttribute('data-section');
+            
+            // UI Toggle
+            document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+            document.getElementById(section).style.display = 'block';
+            
+            // Nav Class
+            document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+            e.target.classList.add('active');
+
+            refreshAllViews();
+        });
+    });
 }
 
-* { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-
-body {
-    background-color: var(--bg-color);
-    color: var(--text-main);
-    margin: 0;
-    line-height: 1.6;
+// --- DATA PERSISTENCE ---
+function saveToDisk() {
+    localStorage.setItem('calmFinance_incomes', JSON.stringify(state.incomes));
+    localStorage.setItem('calmFinance_expenses', JSON.stringify(state.expenses));
+    localStorage.setItem('calmFinance_subscriptions', JSON.stringify(state.subs));
+    localStorage.setItem('calmFinance_debt', JSON.stringify(state.debt));
+    localStorage.setItem('calmFinance_settings', JSON.stringify(state.settings));
+    refreshAllViews();
 }
 
-/* Navigation */
-.navbar {
-    background: var(--card-bg);
-    padding: 1rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+// --- ANALYTICS ENGINE ---
+function calculateMonthlyStats(monthStr) {
+    const inc = state.incomes.filter(i => i.date.startsWith(monthStr)).reduce((a, b) => a + b.amount, 0);
+    const exp = state.expenses.filter(e => e.date.startsWith(monthStr)).reduce((a, b) => a + b.amount, 0);
+    
+    // Add active subscriptions to expenses for the month
+    const activeSubs = state.subs.reduce((acc, s) => {
+        if (s.type === 'monthly') return acc + s.amount;
+        // If yearly, only count if renewal month matches (monthStr is YYYY-MM)
+        const renewalMonth = parseInt(s.renewal);
+        const currentMonthInt = parseInt(monthStr.split('-')[1]);
+        return (renewalMonth === currentMonthInt) ? acc + s.amount : acc;
+    }, 0);
+
+    const totalExp = exp + activeSubs;
+    const net = inc - totalExp;
+    const savingsRate = inc > 0 ? (net / inc) * 100 : 0;
+
+    return { inc, exp: totalExp, net, savingsRate };
 }
 
-.nav-links { list-style: none; display: flex; gap: 20px; margin: 0; padding: 0; }
-.nav-links a { 
-    text-decoration: none; 
-    color: var(--text-main); 
-    font-weight: 500;
-    transition: color 0.3s;
-}
-.nav-links a:hover { color: var(--primary); }
+// --- VIEW RENDERING ---
 
-/* Layout */
-.container { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
-
-.section-title { font-weight: 300; margin-bottom: 2rem; color: var(--primary); }
-
-/* Cards */
-.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; }
-.card {
-    background: var(--card-bg);
-    padding: 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.02);
-    text-align: center;
-}
-.card h3 { font-size: 0.9rem; color: var(--text-light); text-transform: uppercase; margin-top: 0; }
-.amount { font-size: 1.4rem; font-weight: 600; margin: 0.5rem 0; }
-.highlight { color: var(--primary); }
-
-/* Forms */
-.form-style {
-    background: var(--card-bg);
-    padding: 2rem;
-    border-radius: 12px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 2rem;
-}
-.form-style input, .form-style select {
-    padding: 12px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    flex: 1 1 200px;
-}
-.form-style button {
-    background: var(--primary);
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    cursor: pointer;
-    flex: 1 1 100%;
+function refreshAllViews() {
+    const activeView = document.querySelector('.view[style*="display: block"]') || document.getElementById('dashboard');
+    renderDashboard();
+    renderIncome();
+    renderExpenses();
+    renderSubs();
+    renderDebt();
+    renderReports();
 }
 
-/* Lists */
-.data-list { list-style: none; padding: 0; }
-.data-list li {
-    background: #fff;
-    padding: 1rem;
-    margin-bottom: 0.5rem;
-    border-radius: 8px;
-    display: flex;
-    justify-content: space-between;
-    border-left: 4px solid var(--accent);
+function renderDashboard() {
+    const month = document.getElementById('dash-month-filter').value;
+    const stats = calculateMonthlyStats(month);
+
+    // KPI Update
+    document.getElementById('kpi-income').innerText = stats.inc.toLocaleString() + ' EGP';
+    document.getElementById('kpi-expenses').innerText = stats.exp.toLocaleString() + ' EGP';
+    document.getElementById('kpi-balance').innerText = stats.net.toLocaleString() + ' EGP';
+    document.getElementById('kpi-savings').innerText = Math.max(0, stats.net).toLocaleString() + ' EGP';
+
+    // Ratios
+    updateRatio('savings', stats.savingsRate, state.settings.savingsTarget);
+    
+    const fixedCategories = ['Home', 'Subscriptions', 'Debt'];
+    const fixedExp = state.expenses
+        .filter(e => e.date.startsWith(month) && fixedCategories.includes(e.cat))
+        .reduce((a, b) => a + b.amount, 0);
+    const fixedRatio = stats.inc > 0 ? (fixedExp / stats.inc) * 100 : 0;
+    updateRatio('fixed', fixedRatio, 50); // 50% target for fixed costs
+
+    const dti = stats.inc > 0 ? (state.debt.monthlyPay / stats.inc) * 100 : 0;
+    updateRatio('debt', dti, 36); // 36% standard DTI limit
+
+    // Budget Usage
+    const budgetPerc = (stats.exp / state.settings.budget) * 100;
+    document.getElementById('budget-actual-fill').style.width = Math.min(budgetPerc, 100) + '%';
+    document.getElementById('budget-variance-label').innerText = `${Math.round(budgetPerc)}% of ${state.settings.budget} EGP budget used`;
+
+    // Category Breakdown
+    renderCategoryChart(month);
+    
+    // High Pressure Days
+    const dayTotals = {};
+    state.expenses.filter(e => e.date.startsWith(month)).forEach(e => {
+        dayTotals[e.date] = (dayTotals[e.date] || 0) + e.amount;
+    });
+    const topDays = Object.entries(dayTotals).sort((a,b) => b[1] - a[1]).slice(0, 3);
+    document.getElementById('high-pressure-list').innerHTML = topDays.map(d => 
+        `<li><span>${d[0]}</span> <strong>${d[1]} EGP</strong></li>`
+    ).join('');
 }
 
-/* Progress Bar */
-.visual-indicator { margin-top: 3rem; }
-.progress-bar {
-    background: #e0e0e0;
-    height: 12px;
-    border-radius: 6px;
-    overflow: hidden;
-    margin-top: 10px;
-}
-.progress-fill {
-    background: var(--primary);
-    height: 100%;
-    width: 0%;
-    transition: width 0.5s ease;
+function updateRatio(id, value, target) {
+    const bar = document.getElementById(`ratio-${id}-bar`);
+    const text = document.getElementById(`ratio-${id}-text`);
+    const val = Math.round(value);
+    bar.style.width = Math.min(val, 100) + '%';
+    bar.style.backgroundColor = val > target && id !== 'savings' ? 'var(--danger)' : 'var(--accent)';
+    text.innerText = `${val}% (Target: ${target}%)`;
 }
 
-.hint-text { font-size: 0.85rem; color: var(--text-light); margin-top: 2rem; }
+function renderCategoryChart(month) {
+    const container = document.getElementById('category-bar-chart');
+    const cats = {};
+    state.expenses.filter(e => e.date.startsWith(month)).forEach(e => {
+        cats[e.cat] = (cats[e.cat] || 0) + e.amount;
+    });
+    
+    const total = Object.values(cats).reduce((a,b) => a+b, 0);
+    container.innerHTML = Object.entries(cats).map(([name, val]) => {
+        const width = (val / total) * 100;
+        return `
+            <div class="chart-row">
+                <span style="width: 80px">${name}</span>
+                <div class="chart-bar" style="width: calc(${width}% - 100px)"></div>
+                <span>${Math.round(width)}%</span>
+            </div>
+        `;
+    }).join('');
+}
+
+// --- CRUD OPERATIONS ---
+
+function setupEventListeners() {
+    // Income Form
+    document.getElementById('income-form').onsubmit = (e) => {
+        e.preventDefault();
+        state.incomes.push({
+            id: Date.now(),
+            date: document.getElementById('inc-date').value,
+            source: document.getElementById('inc-source').value,
+            amount: parseFloat(document.getElementById('inc-amount').value),
+            notes: document.getElementById('inc-notes').value
+        });
+        saveToDisk();
+        e.target.reset();
+    };
+
+    // Expense Form
+    document.getElementById('expense-form').onsubmit = (e) => {
+        e.preventDefault();
+        state.expenses.push({
+            id: Date.now(),
+            date: document.getElementById('exp-date').value,
+            cat: document.getElementById('exp-cat').value,
+            amount: parseFloat(document.getElementById('exp-amount').value),
+            notes: document.getElementById('exp-notes').value
+        });
+        saveToDisk();
+        e.target.reset();
+    };
+
+    // Sub Form
+    document.getElementById('sub-form').onsubmit = (e) => {
+        e.preventDefault();
+        state.subs.push({
+            id: Date.now(),
+            name: document.getElementById('sub-name').value,
+            type: document.getElementById('sub-type').value,
+            amount: parseFloat(document.getElementById('sub-amount').value),
+            renewal: document.getElementById('sub-renewal').value
+        });
+        saveToDisk();
+        e.target.reset();
+    };
+
+    document.getElementById('dash-month-filter').onchange = refreshAllViews;
+    document.getElementById('exp-filter-month').onchange = refreshAllViews;
+    document.getElementById('exp-filter-cat').onchange = refreshAllViews;
+}
+
+function renderIncome() {
+    const tbody = document.getElementById('income-table-body');
+    const filtered = state.incomes.sort((a,b) => new Date(b.date) - new Date(a.date));
+    tbody.innerHTML = filtered.map(i => `
+        <tr>
+            <td>${i.date}</td>
+            <td>${i.source}</td>
+            <td>${i.amount.toLocaleString()}</td>
+            <td>${i.notes}</td>
+            <td><button class="btn-del" onclick="deleteItem('incomes', ${i.id})">✕</button></td>
+        </tr>
+    `).join('');
+}
+
+function renderExpenses() {
+    const month = document.getElementById('exp-filter-month').value;
+    const cat = document.getElementById('exp-filter-cat').value;
+    const tbody = document.getElementById('expense-table-body');
+    
+    let filtered = state.expenses.filter(e => e.date.startsWith(month));
+    if(cat !== 'All') filtered = filtered.filter(e => e.cat === cat);
+
+    tbody.innerHTML = filtered.sort((a,b) => new Date(b.date) - new Date(a.date)).map(e => `
+        <tr>
+            <td>${e.date}</td>
+            <td>${e.cat}</td>
+            <td>${e.amount.toLocaleString()}</td>
+            <td>${e.notes}</td>
+            <td><button class="btn-del" onclick="deleteItem('expenses', ${e.id})">✕</button></td>
+        </tr>
+    `).join('');
+}
+
+function renderSubs() {
+    const grid = document.getElementById('subs-grid');
+    grid.innerHTML = state.subs.map(s => `
+        <div class="card sub-card">
+            <div style="display:flex; justify-content:space-between">
+                <strong>${s.name}</strong>
+                <button class="btn-del" onclick="deleteItem('subs', ${s.id})">✕</button>
+            </div>
+            <p>${s.amount} EGP / ${s.type}</p>
+            <small>Renews: Month ${s.renewal}</small>
+        </div>
+    `).join('');
+
+    const monthlyTotal = state.subs.reduce((acc, s) => acc + (s.type === 'monthly' ? s.amount : s.amount/12), 0);
+    document.getElementById('sub-monthly-total').innerText = Math.round(monthlyTotal).toLocaleString() + ' EGP';
+    document.getElementById('sub-yearly-total').innerText = Math.round(monthlyTotal * 12).toLocaleString() + ' EGP';
+}
+
+function renderDebt() {
+    const tbody = document.getElementById('debt-table-body');
+    let balance = state.debt.startBal;
+    const monthlyPayment = state.debt.monthlyPay;
+    const monthlyRate = (state.debt.apr / 100) / 12;
+    let html = '';
+    let months = 0;
+
+    while (balance > 0 && months < 120) { // Cap at 10 years
+        const interest = balance * monthlyRate;
+        const principal = monthlyPayment - interest;
+        balance -= principal;
+        if(balance < 0) balance = 0;
+        months++;
+
+        if(months <= 12) { // Only show first 12 months in table
+            html += `<tr><td>Month ${months}</td><td>${monthlyPayment}</td><td>${Math.round(interest)}</td><td>${Math.round(principal)}</td><td>${Math.round(balance)}</td></tr>`;
+        }
+    }
+    tbody.innerHTML = html;
+    document.getElementById('debt-months-left').innerText = `${months} Months`;
+}
+
+function renderReports() {
+    const tbody = document.getElementById('reports-table-body');
+    const months = [];
+    for(let i=0; i<12; i++) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        months.push(d.toISOString().slice(0, 7));
+    }
+
+    tbody.innerHTML = months.map(m => {
+        const s = calculateMonthlyStats(m);
+        return `
+            <tr>
+                <td>${m}</td>
+                <td>${s.inc.toLocaleString()}</td>
+                <td>${s.exp.toLocaleString()}</td>
+                <td style="color: ${s.net >= 0 ? 'var(--accent)' : 'var(--danger)'}">${s.net.toLocaleString()}</td>
+                <td>${Math.round(s.savingsRate)}%</td>
+                <td>Fixed</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// --- CONTROLLERS ---
+
+function deleteItem(collection, id) {
+    state[collection] = state[collection].filter(item => item.id !== id);
+    saveToDisk();
+}
+
+function quickAddIncome(source, amount, day) {
+    const date = state.currentMonth + "-" + String(day).padStart(2, '0');
+    state.incomes.push({ id: Date.now(), date, source, amount, notes: 'Quick Add' });
+    saveToDisk();
+    alert(`Added ${amount} EGP from ${source}`);
+}
+
+function loadFixedPack() {
+    const pack = [
+        { cat: 'Home', amount: 4000, notes: 'Household' },
+        { cat: 'Transport', amount: 1200, notes: 'Mobile/Internet' },
+        { cat: 'Home', amount: 400, notes: 'Electricity' },
+        { cat: 'Personal', amount: 60, notes: 'Haircut' }
+    ];
+    const today = new Date().toISOString().slice(0, 10);
+    pack.forEach(p => {
+        state.expenses.push({ id: Date.now() + Math.random(), date: today, ...p });
+    });
+    saveToDisk();
+}
+
+function loadDefaultSubs() {
+    const defaults = [
+        { name: 'ChatGPT', type: 'monthly', amount: 999.99, renewal: 1 },
+        { name: 'iCloud', type: 'monthly', amount: 149.99, renewal: 1 },
+        { name: 'Canva', type: 'monthly', amount: 160, renewal: 1 },
+        { name: 'Busuu (Yearly)', type: 'yearly', amount: 329.99, renewal: 7 }
+    ];
+    defaults.forEach(s => state.subs.push({ id: Date.now() + Math.random(), ...s }));
+    saveToDisk();
+}
+
+function updateDebtParams() {
+    state.debt.startBal = parseFloat(document.getElementById('debt-start-bal').value);
+    state.debt.monthlyPay = parseFloat(document.getElementById('debt-monthly-pay').value);
+    state.debt.apr = parseFloat(document.getElementById('debt-apr').value);
+    saveToDisk();
+}
+
+function saveSettings() {
+    state.settings.budget = parseFloat(document.getElementById('set-budget').value);
+    state.settings.savingsTarget = parseFloat(document.getElementById('set-savings-target').value);
+    saveToDisk();
+    alert("Settings saved!");
+}
+
+// --- PORTABILITY ---
+
+function exportData() {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
+    const dlAnchorElem = document.createElement('a');
+    dlAnchorElem.setAttribute("href", dataStr);
+    dlAnchorElem.setAttribute("download", "calm_finance_backup.json");
+    dlAnchorElem.click();
+}
+
+function importData(event) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const importedState = JSON.parse(e.target.result);
+        if(confirm("This will overwrite all current data. Proceed?")) {
+            state = importedState;
+            saveToDisk();
+            location.reload();
+        }
+    };
+    reader.readAsText(event.target.files[0]);
+}
+
+function exportToCSV() {
+    let csv = "Date,Type,Category,Amount,Notes\n";
+    state.incomes.forEach(i => csv += `${i.date},Income,${i.source},${i.amount},${i.notes}\n`);
+    state.expenses.forEach(e => csv += `${e.date},Expense,${e.cat},${e.amount},${e.notes}\n`);
+    const hiddenElement = document.createElement('a');
+    hiddenElement.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+    hiddenElement.target = '_blank';
+    hiddenElement.download = 'finance_report.csv';
+    hiddenElement.click();
+}
