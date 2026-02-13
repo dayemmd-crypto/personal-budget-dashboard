@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calm Finance</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo">Calm Finance</div>
+        <ul class="nav-links">
+            <li><a href="#" onclick="showSection('dashboard')">Dashboard</a></li>
+            <li><a href="#" onclick="showSection('income')">Income</a></li>
+            <li><a href="#" onclick="showSection('expenses')">Expenses</a></li>
+            <li><a href="#" onclick="showSection('subscriptions')">Subs</a></li>
+            <li><a href="#" onclick="showSection('debt')">Debt</a></li>
+        </ul>
+    </nav>
+
+    <main class="container">
+        <section id="dashboard" class="content-section">
+            <h1 class="section-title">Monthly Overview</h1>
+            <div class="stats-grid">
+                <div class="card">
+                    <h3>Income</h3>
+                    <p id="dash-income" class="amount">0 EGP</p>
+                </div>
+                <div class="card">
+                    <h3>Expenses</h3>
+                    <p id="dash-expenses" class="amount">0 EGP</p>
+                </div>
+                <div class="card">
+                    <h3>Balance</h3>
+                    <p id="dash-balance" class="amount highlight">0 EGP</p>
+                </div>
+                <div class="card">
+                    <h3>Credit Debt</h3>
+                    <p id="dash-debt" class="amount">0 EGP</p>
+                </div>
+            </div>
+            
+            <div class="visual-indicator">
+                <label>Budget Usage</label>
+                <div class="progress-bar">
+                    <div id="budget-progress" class="progress-fill"></div>
+                </div>
+            </div>
+        </section>
+
+        <section id="income" class="content-section" style="display:none;">
+            <h1 class="section-title">Add Income</h1>
+            <form id="income-form" class="form-style">
+                <input type="date" id="inc-date" required>
+                <select id="inc-source">
+                    <option value="Salary">Salary</option>
+                    <option value="Design">Design</option>
+                    <option value="Other">Other</option>
+                </select>
+                <input type="number" id="inc-amount" placeholder="Amount (EGP)" required>
+                <input type="text" id="inc-notes" placeholder="Notes (Optional)">
+                <button type="submit">Record Income</button>
+            </form>
+            <ul id="income-list" class="data-list"></ul>
+        </section>
+
+        <section id="expenses" class="content-section" style="display:none;">
+            <h1 class="section-title">Add Expense</h1>
+            <form id="expense-form" class="form-style">
+                <input type="date" id="exp-date" required>
+                <select id="exp-category">
+                    <option value="Home">Home</option>
+                    <option value="Transportation">Transportation</option>
+                    <option value="Subscriptions">Subscriptions</option>
+                    <option value="Food">Food</option>
+                    <option value="Personal">Personal</option>
+                    <option value="Debt">Debt Payment</option>
+                </select>
+                <input type="number" id="exp-amount" placeholder="Amount (EGP)" required>
+                <input type="text" id="exp-notes" placeholder="Notes">
+                <button type="submit">Record Expense</button>
+            </form>
+            <ul id="expense-list" class="data-list"></ul>
+        </section>
+
+        <section id="subscriptions" class="content-section" style="display:none;">
+            <h1 class="section-title">Subscriptions</h1>
+            <div class="card sub-total-card">
+                <h3>Total Monthly Cost: <span id="sub-total-val">0</span> EGP</h3>
+            </div>
+            <form id="sub-form" class="form-style">
+                <input type="text" id="sub-name" placeholder="Name (e.g. Netflix)" required>
+                <select id="sub-cycle">
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                </select>
+                <input type="number" id="sub-amount" placeholder="Amount" required>
+                <input type="text" id="sub-month" placeholder="Renewal Month">
+                <button type="submit">Add Subscription</button>
+            </form>
+            <ul id="sub-list" class="data-list"></ul>
+        </section>
+
+        <section id="debt" class="content-section" style="display:none;">
+            <h1 class="section-title">Debt Tracker</h1>
+            <div class="debt-container">
+                <div class="card">
+                    <h3>Initial Debt</h3>
+                    <p>42,000 EGP</p>
+                </div>
+                <div class="card">
+                    <h3>Remaining Balance</h3>
+                    <p id="debt-remaining" class="amount highlight">42,000 EGP</p>
+                </div>
+            </div>
+            <p class="hint-text">Note: Any expense categorized as "Debt Payment" will automatically reduce this balance.</p>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
