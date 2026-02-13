@@ -1,92 +1,191 @@
-:root {
-    --bg: #f8fafc;
-    --card: #ffffff;
-    --text-dark: #1e293b;
-    --text-muted: #64748b;
-    --primary: #0f172a;
-    --accent: #10b981; /* Success Green */
-    --accent-soft: #ecfdf5;
-    --danger: #fb7185; /* Soft Rose */
-    --warning: #f59e0b;
-    --border: #e2e8f0;
+/* Storage Keys */
+const KEYS = {
+    INCOME: 'calmFinance_incomes',
+    EXPENSE: 'calmFinance_expenses',
+    SUBS: 'calmFinance_subscriptions',
+    DEBT: 'calmFinance_debt',
+    SETTINGS: 'calmFinance_settings'
+};
+
+/* State Management */
+const state = {
+    incomes: JSON.parse(localStorage.getItem(KEYS.INCOME)) || [],
+    expenses: JSON.parse(localStorage.getItem(KEYS.EXPENSE)) || [],
+    subs: JSON.parse(localStorage.getItem(KEYS.SUBS)) || [],
+    debt: JSON.parse(localStorage.getItem(KEYS.DEBT)) || [],
+    settings: JSON.parse(localStorage.getItem(KEYS.SETTINGS)) || { currency: '$' }
+};
+
+/* --- 1. Navigation & Routing --- */
+function router() {
+    // Default to #dashboard if empty
+    const hash = window.location.hash || '#dashboard';
+    
+    // Hide all sections
+    document.querySelectorAll('.view').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+
+    // Show target section
+    const target = document.querySelector(hash);
+    if (target) {
+        target.classList.remove('hidden');
+    }
+    
+    // Highlight nav link
+    const navLink = document.querySelector(`nav a[href="${hash}"]`);
+    if (navLink) navLink.classList.add('active');
+
+    // Trigger specific view renders
+    if (hash === '#dashboard') renderDashboard();
+    if (hash === '#income') renderList(state.incomes, 'incomeList');
+    if (hash === '#expenses') renderList(state.expenses, 'expenseList');
+    if (hash === '#subs') renderList(state.subs, 'subsList');
+    if (hash === '#debt') renderList(state.debt, 'debtList');
+    if (hash === '#reports') renderReports();
 }
 
-body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background-color: var(--bg);
-    color: var(--text-dark);
-    margin: 0;
-    padding: 0;
+window.addEventListener('hashchange', router);
+window.addEventListener('DOMContentLoaded', () => {
+    // Set default month input to current month (YYYY-MM)
+    const today = new Date().toISOString().slice(0, 7);
+    const monthInput = document.getElementById('dashboardMonth');
+    if(monthInput) {
+        monthInput.value = today;
+        monthInput.addEventListener('change', renderDashboard);
+    }
+    
+    // Init settings
+    const currInput = document.getElementById('currencyInput');
+    if(currInput) currInput.value = state.settings.currency;
+
+    router();
+});
+
+/* --- 2. Data Persistence Helper --- */
+function save(key, data) {
+    localStorage.setItem(key, JSON.stringify(data));
 }
 
-/* Nav */
-.top-nav {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 2rem;
-    background: var(--card);
-    border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    z-index: 100;
+function formatMoney(amount) {
+    return `${state.settings.currency}${parseFloat(amount).toFixed(2)}`;
 }
 
-.brand { display: flex; align-items: center; gap: 10px; }
-.brand h1 { font-size: 1.1rem; margin: 0; font-weight: 700; letter-spacing: -0.5px; }
-.cfo-badge { font-size: 0.7rem; background: var(--primary); color: white; padding: 2px 6px; border-radius: 4px; vertical-align: middle; }
+/* --- 3. Form Handling --- */
+function handleForm(formId, dataKey, storageKey, processFn) {
+    const form = document.getElementById(formId);
+    if (!form) return;
 
-.nav-links { list-style: none; display: flex; gap: 1.5rem; }
-.nav-links a { text-decoration: none; color: var(--text-muted); font-size: 0.9rem; font-weight: 500; cursor: pointer; }
-.nav-links a.active { color: var(--primary); font-weight: 700; }
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const entry = Object.fromEntries(formData.entries());
+        
+        // Add ID and Timestamp
+        entry.id = Date.now();
+        entry.created_at = new Date().toISOString();
 
-/* Layout */
-#app-container { max-width: 1100px; margin: 2rem auto; padding: 0 1.5rem; }
-.view-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-.view-header h2 { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+        // Push to state
+        state[dataKey].push(entry);
+        
+        // Save to Storage
+        save(storageKey, state[dataKey]);
+        
+        // UI Feedback
+        form.reset();
+        alert('Saved successfully!');
+        
+        // Refresh Current View
+        router(); 
+    });
+}
 
-.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+// Initialize Forms
+handleForm('incomeForm', 'incomes', KEYS.INCOME);
+handleForm('expenseForm', 'expenses', KEYS.EXPENSE);
+handleForm('subsForm', 'subs', KEYS.SUBS);
+handleForm('debtForm', 'debt', KEYS.DEBT);
 
-/* KPI Cards */
-.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-.kpi-card { background: var(--card); border: 1px solid var(--border); padding: 1.2rem; border-radius: 12px; }
-.kpi-card label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
-.kpi-card .value { font-size: 1.4rem; font-weight: 700; margin-top: 5px; }
-.kpi-card .value.highlight { color: var(--accent); }
+/* Settings Form */
+document.getElementById('settingsForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    state.settings.currency = document.getElementById('currencyInput').value || '$';
+    save(KEYS.SETTINGS, state.settings);
+    alert('Settings Saved');
+    router(); // refresh to show new currency
+});
 
-/* Analytics Rows */
-.analytics-row { display: grid; grid-template-columns: 1.5fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
-@media (max-width: 768px) { .analytics-row { grid-template-columns: 1fr; } }
+document.getElementById('clearDataBtn').addEventListener('click', () => {
+    if(confirm('Are you sure? This will wipe all data.')) {
+        localStorage.clear();
+        location.reload();
+    }
+});
 
-/* Ratios */
-.ratio-item { margin-bottom: 1rem; }
-.ratio-item span { font-size: 0.85rem; display: block; margin-bottom: 5px; }
-.progress-bg { background: var(--bg); border-radius: 10px; height: 8px; position: relative; overflow: hidden; }
-.progress-bg.large { height: 16px; margin-bottom: 10px; }
-.progress-fill { background: var(--accent); height: 100%; transition: width 0.5s ease; }
+/* --- 4. Render Logic --- */
 
-/* Bar Chart (CSS-based) */
-.bar-chart-v { display: flex; flex-direction: column; gap: 10px; margin-top: 1rem; }
-.chart-row { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; }
-.chart-bar { background: var(--accent); height: 20px; border-radius: 4px; opacity: 0.8; }
+function renderDashboard() {
+    const monthInput = document.getElementById('dashboardMonth');
+    const selectedMonth = monthInput.value; // YYYY-MM
 
-/* Forms */
-.form-card { background: var(--primary); padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; }
-.form-card form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
-input, select { padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; outline: none; }
-.btn-primary { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; }
-.btn-outline { background: transparent; border: 1px solid var(--border); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+    // Filter by selected month
+    const currentIncomes = state.incomes.filter(i => i.date.startsWith(selectedMonth));
+    const currentExpenses = state.expenses.filter(e => e.date.startsWith(selectedMonth));
 
-/* Tables */
-.data-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-.data-table th { text-align: left; color: var(--text-muted); padding: 10px; border-bottom: 1px solid var(--border); }
-.data-table td { padding: 12px 10px; border-bottom: 1px solid var(--border); }
-.btn-del { color: var(--danger); background: none; border: none; cursor: pointer; }
+    // Calculate Totals
+    const totalInc = currentIncomes.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+    const totalExp = currentExpenses.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+    
+    // Subs are assumed monthly recurring
+    const totalSubs = state.subs.reduce((sum, item) => sum + parseFloat(item.cost), 0);
 
-/* Subs Grid */
-.subs-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
-.sub-card { border-left: 4px solid var(--accent); }
+    const net = totalInc - (totalExp + totalSubs);
 
-/* Helpers */
-.mini-list { list-style: none; padding: 0; }
-.mini-list li { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed var(--border); font-size: 0.85rem; }
+    // Update UI
+    document.getElementById('totalIncome').textContent = formatMoney(totalInc);
+    document.getElementById('totalExpenses').textContent = formatMoney(totalExp);
+    document.getElementById('totalSubs').textContent = formatMoney(totalSubs);
+    document.getElementById('netBalance').textContent = formatMoney(net);
+    
+    // Simple color coding
+    const netEl = document.getElementById('netBalance');
+    netEl.style.color = net >= 0 ? 'var(--primary)' : 'var(--warn)';
+}
+
+function renderList(dataArray, listId) {
+    const list = document.getElementById(listId);
+    if (!list) return;
+    list.innerHTML = '';
+
+    // Sort by date desc (if date exists) or id
+    const sorted = [...dataArray].sort((a,b) => (b.date || b.id) > (a.date || a.id) ? 1 : -1);
+
+    sorted.forEach(item => {
+        const li = document.createElement('li');
+        // Determine label based on type
+        const mainText = item.source || item.category || item.name || 'Entry';
+        const amt = item.amount || item.cost || item.total;
+        const date = item.date ? `<small>${item.date}</small>` : '';
+        
+        li.innerHTML = `
+            <div><strong>${mainText}</strong> <br> ${date}</div>
+            <div>${formatMoney(amt)}</div>
+        `;
+        list.appendChild(li);
+    });
+}
+
+function renderReports() {
+    const output = document.getElementById('reportOutput');
+    const countI = state.incomes.length;
+    const countE = state.expenses.length;
+    const countD = state.debt.length;
+    
+    output.innerHTML = `
+        <div class="card">
+            <h3>Database Statistics</h3>
+            <p>Income Entries: ${countI}</p>
+            <p>Expense Entries: ${countE}</p>
+            <p>Active Debts: ${countD}</p>
+        </div>
+    `;
+}
